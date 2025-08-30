@@ -149,47 +149,100 @@ namespace PersonalFinanceTracker.Controllers
             return Ok(response);
         }
 
-        [HttpGet("summary")]
-        public async Task<IActionResult> GetTransactionSummary()
+        
+[HttpGet("summary")]
+public async Task<IActionResult> GetTransactionSummary([FromQuery] bool excludeInternalTransfers = false)
+{
+    var allTransactions = await _context.Transactions.ToListAsync();
+    if (!allTransactions.Any())
+    {
+        return Ok(new TransactionSummary
         {
-            var allTransactions = await _context.Transactions.ToListAsync();
-            if (!allTransactions.Any())
-            {
-                return Ok(new TransactionSummary
-                {
-                    TotalCredits = 0,
-                    TotalDebits = 0,
-                    CurrentBalance = 0,
-                    AverageTransaction = 0,
-                    TransactionCount = 0,
-                    UncategorizedCount = 0
-                });
-            }
+            TotalCredits = 0,
+            TotalDebits = 0,
+            CurrentBalance = 0,
+            AverageTransaction = 0,
+            TransactionCount = 0,
+            UncategorizedCount = 0,
+            TotalSavings = 0,
+            SavingsRate = 0,
+            ActualSpending = 0,
+            ActualIncome = 0
+        });
+    }
 
-            var totalCredits = allTransactions.Where(t => t.Credit > 0).Sum(t => t.Credit);
-            var totalDebits = Math.Abs(allTransactions.Where(t => t.Credit < 0).Sum(t => t.Credit));
-            var currentBalance = allTransactions.OrderByDescending(t => t.Date).First().Balance;
-            var averageTransaction = allTransactions.Average(t => Math.Abs(t.Credit));
+    var filteredTransactions = allTransactions;
+    
+    if (excludeInternalTransfers)
+    {
+        // Filter out internal transfers based on common patterns
+        filteredTransactions = allTransactions.Where(t => 
+            !IsInternalTransfer(t.Description, t.Category)
+        ).ToList();
+    }
 
-            // Count uncategorized transactions
-            var uncategorizedCount = allTransactions.Count(t =>
-                t.CategoryId == null ||
-                string.IsNullOrEmpty(t.Category) ||
-                t.Category == "Uncategorized"
-            );
+    var totalCredits = filteredTransactions.Where(t => t.Credit > 0).Sum(t => t.Credit);
+    var totalDebits = Math.Abs(filteredTransactions.Where(t => t.Credit < 0).Sum(t => t.Credit));
+    var currentBalance = allTransactions.OrderByDescending(t => t.Date).First().Balance;
+    var averageTransaction = filteredTransactions.Any() ? filteredTransactions.Average(t => Math.Abs(t.Credit)) : 0;
 
-            var summary = new TransactionSummary
-            {
-                TotalCredits = totalCredits,
-                TotalDebits = totalDebits,
-                CurrentBalance = currentBalance,
-                AverageTransaction = averageTransaction,
-                TransactionCount = allTransactions.Count,
-                UncategorizedCount = uncategorizedCount
-            };
+    // Calculate savings and spending
+    var actualIncome = totalCredits;
+    var actualSpending = totalDebits;
+    var totalSavings = actualIncome - actualSpending;
+    var savingsRate = actualIncome > 0 ? (totalSavings / actualIncome) * 100 : 0;
 
-            return Ok(summary);
-        }
+    // Count uncategorized transactions
+    var uncategorizedCount = allTransactions.Count(t =>
+        t.CategoryId == null ||
+        string.IsNullOrEmpty(t.Category) ||
+        t.Category == "Uncategorized"
+    );
+
+    var summary = new TransactionSummary
+    {
+        TotalCredits = totalCredits,
+        TotalDebits = totalDebits,
+        CurrentBalance = currentBalance,
+        AverageTransaction = averageTransaction,
+        TransactionCount = filteredTransactions.Count,
+        UncategorizedCount = uncategorizedCount,
+        TotalSavings = totalSavings,
+        SavingsRate = Math.Round(savingsRate, 2),
+        ActualSpending = actualSpending,
+        ActualIncome = actualIncome,
+        InternalTransfersExcluded = excludeInternalTransfers,
+        OriginalTransactionCount = allTransactions.Count
+    };
+
+    return Ok(summary);
+}
+
+private bool IsInternalTransfer(string description, string category)
+{
+    var desc = description?.ToLower() ?? "";
+    var cat = category?.ToLower() ?? "";
+    
+    // Common internal transfer patterns
+    var internalPatterns = new[]
+    {
+        "transfer", "tfr", "internal", "savings", "investment",
+        "credit card payment", "cc payment", "loan payment",
+        "mortgage payment", "between accounts", "account transfer",
+        "online transfer", "mobile transfer", "wire transfer",
+        "deposit to", "withdrawal from", "move money"
+    };
+    
+    var internalCategories = new[]
+    {
+        "transfers", "internal transfer", "savings", "investments",
+        "loan payments", "credit card payments", "account transfers"
+    };
+    
+    return internalPatterns.Any(pattern => desc.Contains(pattern)) ||
+           internalCategories.Any(pattern => cat.Contains(pattern));
+}
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Transaction>> GetTransaction(int id)
