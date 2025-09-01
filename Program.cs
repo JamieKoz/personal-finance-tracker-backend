@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PersonalFinanceTracker.Persistence;
 using PersonalFinanceTracker.Application;
 using PersonalFinanceTracker.Api;

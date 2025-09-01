@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+
 namespace PersonalFinanceTracker.Models
 {
     public class Category

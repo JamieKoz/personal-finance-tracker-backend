@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PersonalFinanceTracker.Repositories;
 using PersonalFinanceTracker.Persistence;
 
 namespace PersonalFinanceTracker.Infrastructure
@@ -7,6 +8,8 @@ namespace PersonalFinanceTracker.Infrastructure
     {
         public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
         {
+            services.AddScoped<ITransactionRepository, TransactionRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddDbContext<TransactionDbContext>(options => options.UseSqlite("Data Source=transactions.db"));
             return services;
         }
