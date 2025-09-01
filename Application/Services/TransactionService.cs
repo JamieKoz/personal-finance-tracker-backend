@@ -37,15 +37,14 @@ namespace PersonalFinanceTracker.Services
 
                 var existingTransaction = await _transactionRepository.GetByHashAsync(transaction.ImportHash);
 
-                if (existingTransaction == null)
-                {
-                    await _transactionRepository.AddAsync(transaction);
-                    newTransactionsCount++;
-                }
-                else
+                if (existingTransaction != null)
                 {
                     duplicatesSkipped++;
+                    continue;
                 }
+
+                await _transactionRepository.AddAsync(transaction);
+                newTransactionsCount++;
             }
 
             await _transactionRepository.SaveChangesAsync();
@@ -107,12 +106,14 @@ namespace PersonalFinanceTracker.Services
         public async Task UpdateTransactionCategoryAsync(int transactionId, int categoryId)
         {
             var transaction = await _transactionRepository.GetByIdAsync(transactionId);
-            if (transaction == null)
+            if (transaction == null) {
                 throw new ArgumentException("Transaction not found");
+            }
 
             var category = await _categoryRepository.GetByIdAsync(categoryId);
-            if (category == null)
+            if (category == null) {
                 throw new InvalidOperationException("Category not found");
+            }
 
             transaction.CategoryId = category.Id;
             transaction.Category = category.Name;

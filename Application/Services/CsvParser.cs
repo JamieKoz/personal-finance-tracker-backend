@@ -55,9 +55,9 @@ namespace PersonalFinanceTracker.Services
                         Category = "Uncategorized"
                     });
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    Console.WriteLine($"Skipping row {line}: {ex.Message}");
+                    Console.WriteLine($"Skipping row {line}: {e.Message}");
                 }
             }
 

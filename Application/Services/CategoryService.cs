@@ -77,8 +77,9 @@ namespace PersonalFinanceTracker.Services
         public async Task<CategoryDeleteResult> DeleteCategoryAsync(int id)
         {
             var category = await _categoryRepository.GetByIdAsync(id);
-            if (category == null)
+            if (category == null) {
                 throw new ArgumentException("Category not found");
+            }
 
             // Get all transactions with this category
             var transactions = await _transactionRepository.GetByCategoryIdAsync(id);
@@ -107,8 +108,9 @@ namespace PersonalFinanceTracker.Services
         public async Task<CategorizeResult> CategorizeTransactionsAsync(Categorize request)
         {
             var category = await _categoryRepository.GetByIdAsync(request.CategoryId);
-            if (category == null)
+            if (category == null) {
                 throw new ArgumentException("Category not found");
+            }
 
             var matchingTransactions = await _transactionRepository.GetTransactionsByFiltersAsync(
                 descriptionPattern: request.DescriptionPattern,
@@ -141,12 +143,14 @@ namespace PersonalFinanceTracker.Services
         public async Task<CategorizeResult> CategorizeWithPatternAsync(CategorizeWithPattern request)
         {
             var category = await _categoryRepository.GetByIdAsync(request.CategoryId);
-            if (category == null)
+            if (category == null) {
                 throw new ArgumentException("Category not found");
+            }
 
             var baseTransaction = await _transactionRepository.GetByIdAsync(request.TransactionId);
-            if (baseTransaction == null)
+            if (baseTransaction == null) {
                 throw new ArgumentException("Transaction not found");
+            }
 
             // Check if this is a transfer - if so, only categorize this specific transaction
             if (IsTransfer(baseTransaction.Description))
