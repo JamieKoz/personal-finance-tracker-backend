@@ -25,7 +25,7 @@ namespace PersonalFinanceTracker.Persistence
                 .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower());
         }
 
-        public async Task<IEnumerable<CategoryWithCount>> GetCategoriesWithTransactionCountAsync()
+        public async Task<List<CategoryWithCount>> GetCategoriesWithTransactionCountAsync()
         {
             return await _context.Categories
                 .Select(c => new CategoryWithCount

@@ -26,12 +26,12 @@ namespace PersonalFinanceTracker.Repositories
                 .FirstOrDefaultAsync(t => t.ImportHash == hash);
         }
 
-        public async Task<IEnumerable<Transaction>> GetAllAsync()
+        public async Task<List<Transaction>> GetAllAsync()
         {
             return await _context.Transactions.ToListAsync();
         }
 
-        public async Task<IEnumerable<Transaction>> GetByCategoryIdAsync(int categoryId)
+        public async Task<List<Transaction>> GetByCategoryIdAsync(int categoryId)
         {
             return await _context.Transactions
                 .Where(t => t.CategoryId == categoryId)
@@ -105,7 +105,7 @@ namespace PersonalFinanceTracker.Repositories
             };
         }
 
-        public async Task<IEnumerable<Transaction>> GetTransactionsByFiltersAsync(
+        public async Task<List<Transaction>> GetTransactionsByFiltersAsync(
             string? descriptionPattern = null,
             decimal? amountMin = null,
             decimal? amountMax = null,
@@ -143,7 +143,7 @@ namespace PersonalFinanceTracker.Repositories
             return await query.ToListAsync();
         }
 
-        public async Task<IEnumerable<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName)
+        public async Task<List<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName)
         {
             return await _context.Transactions
                 .Where(t => t.Description.Contains(businessName) &&

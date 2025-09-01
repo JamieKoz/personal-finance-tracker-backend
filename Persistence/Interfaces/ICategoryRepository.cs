@@ -7,7 +7,7 @@ namespace PersonalFinanceTracker.Persistence
     {
         Task<Category?> GetByIdAsync(int id);
         Task<Category?> GetByNameAsync(string name);
-        Task<IEnumerable<CategoryWithCount>> GetCategoriesWithTransactionCountAsync();
+        Task<List<CategoryWithCount>> GetCategoriesWithTransactionCountAsync();
         Task AddAsync(Category category);
         Task UpdateAsync(Category category);
         Task DeleteAsync(Category category);

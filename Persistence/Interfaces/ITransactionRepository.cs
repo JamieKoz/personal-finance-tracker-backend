@@ -7,8 +7,8 @@ namespace PersonalFinanceTracker.Persistence
     {
         Task<Transaction?> GetByIdAsync(int id);
         Task<Transaction?> GetByHashAsync(string hash);
-        Task<IEnumerable<Transaction>> GetAllAsync();
-        Task<IEnumerable<Transaction>> GetByCategoryIdAsync(int categoryId);
+        Task<List<Transaction>> GetAllAsync();
+        Task<List<Transaction>> GetByCategoryIdAsync(int categoryId);
         Task<PagedResponse<Transaction>> GetPagedAsync(
             int page, 
             int pageSize, 
@@ -16,13 +16,13 @@ namespace PersonalFinanceTracker.Persistence
             string sortField = "date", 
             string sortDirection = "desc", 
             string? category = null);
-        Task<IEnumerable<Transaction>> GetTransactionsByFiltersAsync(
+        Task<List<Transaction>> GetTransactionsByFiltersAsync(
             string? descriptionPattern = null,
             decimal? amountMin = null,
             decimal? amountMax = null,
             DateTime? dateFrom = null,
             DateTime? dateTo = null);
-        Task<IEnumerable<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName);
+        Task<List<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName);
         Task<int> GetCountAsync();
         Task AddAsync(Transaction transaction);
         Task UpdateAsync(Transaction transaction);
