@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinanceTracker.Models;
 
 namespace PersonalFinanceTracker.Persistence
 {
-    public class TransactionDbContext : DbContext
+    public class TransactionDbContext : IdentityDbContext<ApplicationUser>
     {
         public TransactionDbContext(DbContextOptions<TransactionDbContext> options) : base(options)
         {
@@ -14,7 +15,8 @@ namespace PersonalFinanceTracker.Persistence
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure decimal precision for money fields
+            base.OnModelCreating(modelBuilder);
+
             modelBuilder.Entity<Transaction>()
                 .Property(t => t.Credit)
                 .HasPrecision(18, 2);
@@ -23,7 +25,6 @@ namespace PersonalFinanceTracker.Persistence
                 .Property(t => t.Balance)
                 .HasPrecision(18, 2);
 
-            // Add index for better query performance
             modelBuilder.Entity<Transaction>()
                 .HasIndex(t => t.Date);
 
@@ -31,32 +32,53 @@ namespace PersonalFinanceTracker.Persistence
                 .HasIndex(t => t.Category);
 
             modelBuilder.Entity<Transaction>()
+                .HasIndex(t => t.UserId);
+
+            modelBuilder.Entity<Category>()
+                .HasIndex(c => c.UserId);
+
+            modelBuilder.Entity<Transaction>()
                 .HasOne(t => t.CategoryNavigation)
                 .WithMany(c => c.Transactions)
                 .HasForeignKey(t => t.CategoryId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Seed default categories
-            var seedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "Uncategorized", Color = "#808080" },  // Gray
-                new Category { Id = 2, Name = "Food & Dining", Color = "#FF5733" },  // Orange-Red
-                new Category { Id = 3, Name = "Transport", Color = "#33FFF5" },      // Cyan
-                new Category { Id = 4, Name = "Shopping", Color = "#3357FF" },       // Blue
-                new Category { Id = 5, Name = "Bills & Utilities", Color = "#FF33F5" }, // Pink
-                new Category { Id = 6, Name = "Income", Color = "#33FF57" },         // Green
-                new Category { Id = 7, Name = "Groceries", Color = "#3F502F" },         // Dark green
-                new Category { Id = 8, Name = "Coffee", Color = "#A0522D" },         // Brown
-                new Category { Id = 9, Name = "Petrol", Color = "#FFD700" },         // Gold/Yellow
-                new Category { Id = 10, Name = "Transfers", Color = "#8A2BE2" },      // Purple
-                new Category { Id = 11, Name = "Fitness", Color = "#FF4500" },       // Orange
-                new Category { Id = 13, Name = "Car", Color = "#FFB2AA" },        // Salmon
-                new Category { Id = 14, Name = "Gifts", Color = "#CB22AA" },        // Deep pink
-                new Category { Id = 15, Name = "Rebates", Color = "#E1EAAA" },        // Crap green
-                new Category { Id = 16, Name = "Leisure", Color = "#A1EAAA" }        // Soft green
-            );
+            // NEW: Configure user relationships
+            modelBuilder.Entity<Transaction>()
+                .HasOne(t => t.User)
+                .WithMany(u => u.Transactions)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Category>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.Categories)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
 
+        // Helper method to get default categories for a new user
+        public static List<Category> GetDefaultCategoriesForUser(string userId)
+        {
+            return new List<Category>
+            {
+                new Category { Name = "Uncategorized", Color = "#808080", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Food & Dining", Color = "#FF5733", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Transport", Color = "#33FFF5", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Shopping", Color = "#3357FF", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Bills & Utilities", Color = "#FF33F5", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Income", Color = "#33FF57", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Groceries", Color = "#3F502F", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Coffee", Color = "#A0522D", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Petrol", Color = "#FFD700", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Transfers", Color = "#8A2BE2", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Fitness", Color = "#FF4500", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Car", Color = "#FFB2AA", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Gifts", Color = "#CB22AA", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Rebates", Color = "#E1EAAA", UserId = userId, CreatedAt = DateTime.UtcNow },
+                new Category { Name = "Leisure", Color = "#A1EAAA", UserId = userId, CreatedAt = DateTime.UtcNow }
+            };
+        }
     }
-
 }

@@ -34,5 +34,8 @@ namespace PersonalFinanceTracker.Models
 
         public Category? CategoryNavigation { get; set; }
 
+        [Required]
+        public string UserId { get; set; } = string.Empty;
+        public ApplicationUser User { get; set; } = null!;
     }
 }

@@ -5,9 +5,8 @@ using PersonalFinanceTracker.Services;
 
 namespace PersonalFinanceTracker.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    public class TransactionController : ControllerBase
+    public class TransactionController : BaseController
     {
         private readonly ITransactionService _transactionService;
 
@@ -16,7 +15,6 @@ namespace PersonalFinanceTracker.Controllers
             _transactionService = transactionService;
         }
 
-        // @TODO Add encryption for file upload
         [HttpPost("upload-csv")]
         public async Task<IActionResult> UploadCsv(IFormFile file)
         {
@@ -25,10 +23,14 @@ namespace PersonalFinanceTracker.Controllers
                 return BadRequest("No file uploaded");
             }
 
-            try {
-                var result = await _transactionService.ImportCsvAsync(file);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                var result = await _transactionService.ImportCsvAsync(file, userId);
                 return Ok(result);
-            } catch (Exception ex) {
+            } 
+            catch (Exception ex) 
+            {
                 return BadRequest($"Error processing CSV: {ex.Message}");
             }
         }
@@ -52,21 +54,24 @@ namespace PersonalFinanceTracker.Controllers
                 Category = category
             };
 
-            var result = await _transactionService.GetTransactionsAsync(request);
+            var userId = GetCurrentUserId();
+            var result = await _transactionService.GetTransactionsAsync(request, userId);
             return Ok(result);
         }
 
         [HttpGet("summary")]
         public async Task<IActionResult> GetTransactionSummary([FromQuery] bool excludeInternalTransfers = false)
         {
-            var summary = await _transactionService.GetTransactionSummaryAsync(excludeInternalTransfers);
+            var userId = GetCurrentUserId();
+            var summary = await _transactionService.GetTransactionSummaryAsync(userId, excludeInternalTransfers);
             return Ok(summary);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Transaction>> GetTransaction(int id)
         {
-            var transaction = await _transactionService.GetTransactionByIdAsync(id);
+            var userId = GetCurrentUserId();
+            var transaction = await _transactionService.GetTransactionByIdAsync(id, userId);
 
             if (transaction == null)
                 return NotFound();
@@ -77,12 +82,18 @@ namespace PersonalFinanceTracker.Controllers
         [HttpPut("{id}/category")]
         public async Task<IActionResult> UpdateTransactionCategory(int id, [FromBody] UpdateTransaction request)
         {
-            try {
-                await _transactionService.UpdateTransactionCategoryAsync(id, request.CategoryId);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                await _transactionService.UpdateTransactionCategoryAsync(id, request.CategoryId, userId);
                 return Ok(new { Message = "Transaction category updated successfully" });
-            } catch (ArgumentException ex) {
+            } 
+            catch (ArgumentException ex) 
+            {
                 return NotFound(ex.Message);
-            } catch (InvalidOperationException ex) {
+            } 
+            catch (InvalidOperationException ex) 
+            {
                 return BadRequest(ex.Message);
             }
         }

@@ -17,9 +17,9 @@ namespace PersonalFinanceTracker.Services
             _transactionRepository = transactionRepository;
         }
 
-        public async Task<IEnumerable<object>> GetCategoriesAsync()
+        public async Task<IEnumerable<object>> GetCategoriesAsync(string userId)
         {
-            var categories = await _categoryRepository.GetCategoriesWithTransactionCountAsync();
+            var categories = await _categoryRepository.GetCategoriesWithTransactionCountAsync(userId);
             return categories.Select(c => new
             {
                 c.Id,
@@ -31,13 +31,13 @@ namespace PersonalFinanceTracker.Services
             }).OrderBy(c => c.Name);
         }
 
-        public async Task<Category> CreateCategoryAsync(CreateCategory request)
+        public async Task<Category> CreateCategoryAsync(CreateCategory request, string userId)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
                 throw new ArgumentException("Category name is required");
 
-            // Check if category with same name already exists
-            var existingCategory = await _categoryRepository.GetByNameAsync(request.Name);
+            // Check if category with same name already exists for this user
+            var existingCategory = await _categoryRepository.GetByNameAsync(request.Name, userId);
             if (existingCategory != null)
                 throw new ArgumentException($"Category with name '{request.Name}' already exists");
 
@@ -45,24 +45,25 @@ namespace PersonalFinanceTracker.Services
             {
                 Name = request.Name.Trim(),
                 Description = request.Description?.Trim(),
-                Color = request.Color ?? "#6B7280"
+                Color = request.Color ?? "#6B7280",
+                UserId = userId
             };
 
             await _categoryRepository.AddAsync(category);
             return category;
         }
 
-        public async Task<Category> UpdateCategoryAsync(int id, UpdateCategory request)
+        public async Task<Category> UpdateCategoryAsync(int id, UpdateCategory request, string userId)
         {
-            var category = await _categoryRepository.GetByIdAsync(id);
+            var category = await _categoryRepository.GetByIdAsync(id, userId);
             if (category == null)
                 throw new ArgumentException("Category not found");
 
             if (string.IsNullOrWhiteSpace(request.Name))
                 throw new ArgumentException("Category name is required");
 
-            // Check if another category with same name already exists (excluding current category)
-            var existingCategory = await _categoryRepository.GetByNameAsync(request.Name);
+            // Check if another category with same name already exists for this user (excluding current category)
+            var existingCategory = await _categoryRepository.GetByNameAsync(request.Name, userId);
             if (existingCategory != null && existingCategory.Id != id)
                 throw new ArgumentException($"Category with name '{request.Name}' already exists");
 
@@ -74,15 +75,15 @@ namespace PersonalFinanceTracker.Services
             return category;
         }
 
-        public async Task<CategoryDeleteResult> DeleteCategoryAsync(int id)
+        public async Task<CategoryDeleteResult> DeleteCategoryAsync(int id, string userId)
         {
-            var category = await _categoryRepository.GetByIdAsync(id);
+            var category = await _categoryRepository.GetByIdAsync(id, userId);
             if (category == null) {
                 throw new ArgumentException("Category not found");
             }
 
-            // Get all transactions with this category
-            var transactions = await _transactionRepository.GetByCategoryIdAsync(id);
+            // Get all transactions with this category for this user
+            var transactions = await _transactionRepository.GetByCategoryIdAsync(id, userId);
 
             // Set all transactions with this category to uncategorized
             foreach (var transaction in transactions)
@@ -105,14 +106,15 @@ namespace PersonalFinanceTracker.Services
             };
         }
 
-        public async Task<CategorizeResult> CategorizeTransactionsAsync(Categorize request)
+        public async Task<CategorizeResult> CategorizeTransactionsAsync(Categorize request, string userId)
         {
-            var category = await _categoryRepository.GetByIdAsync(request.CategoryId);
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId, userId);
             if (category == null) {
                 throw new ArgumentException("Category not found");
             }
 
             var matchingTransactions = await _transactionRepository.GetTransactionsByFiltersAsync(
+                userId: userId,
                 descriptionPattern: request.DescriptionPattern,
                 amountMin: request.AmountMin,
                 amountMax: request.AmountMax,
@@ -140,14 +142,14 @@ namespace PersonalFinanceTracker.Services
             };
         }
 
-        public async Task<CategorizeResult> CategorizeWithPatternAsync(CategorizeWithPattern request)
+        public async Task<CategorizeResult> CategorizeWithPatternAsync(CategorizeWithPattern request, string userId)
         {
-            var category = await _categoryRepository.GetByIdAsync(request.CategoryId);
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId, userId);
             if (category == null) {
                 throw new ArgumentException("Category not found");
             }
 
-            var baseTransaction = await _transactionRepository.GetByIdAsync(request.TransactionId);
+            var baseTransaction = await _transactionRepository.GetByIdAsync(request.TransactionId, userId);
             if (baseTransaction == null) {
                 throw new ArgumentException("Transaction not found");
             }
@@ -187,8 +189,8 @@ namespace PersonalFinanceTracker.Services
                 };
             }
 
-            // Find all uncategorized transactions with similar business names, excluding transfers
-            var similarTransactions = await _transactionRepository.GetSimilarUncategorizedTransactionsAsync(businessName);
+            // Find all uncategorized transactions with similar business names for this user, excluding transfers
+            var similarTransactions = await _transactionRepository.GetSimilarUncategorizedTransactionsAsync(businessName, userId);
 
             // Update all similar transactions
             foreach (var transaction in similarTransactions)
@@ -215,6 +217,5 @@ namespace PersonalFinanceTracker.Services
         {
             return description?.ToLower().Contains("transfer") ?? false;
         }
-
     }
 }

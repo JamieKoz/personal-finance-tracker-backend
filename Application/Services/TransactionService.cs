@@ -22,7 +22,7 @@ namespace PersonalFinanceTracker.Services
             _csvParser = csvParser;
         }
 
-        public async Task<CsvImportResult> ImportCsvAsync(IFormFile file)
+        public async Task<CsvImportResult> ImportCsvAsync(IFormFile file, string userId)
         {
             using var reader = new StreamReader(file.OpenReadStream());
             var csvContent = await reader.ReadToEndAsync();
@@ -31,11 +31,16 @@ namespace PersonalFinanceTracker.Services
             int newTransactionsCount = 0;
             int duplicatesSkipped = 0;
 
+            // Get user's categories for auto-categorization
+            var userCategories = await _categoryRepository.GetCategoriesWithTransactionCountAsync(userId);
+            var transfersCategory = userCategories.FirstOrDefault(c => c.Name.ToLower() == "transfers");
+
             foreach (var transaction in parsedTransactions)
             {
+                transaction.UserId = userId;
                 transaction.ImportHash = GenerateTransactionHash(transaction);
 
-                var existingTransaction = await _transactionRepository.GetByHashAsync(transaction.ImportHash);
+                var existingTransaction = await _transactionRepository.GetByHashAsync(transaction.ImportHash, userId);
 
                 if (existingTransaction != null)
                 {
@@ -43,12 +48,22 @@ namespace PersonalFinanceTracker.Services
                     continue;
                 }
 
+                // Auto-categorize transfers
+                if (IsInternalTransfer(transaction.Description, transaction.Category))
+                {
+                    if (transfersCategory != null)
+                    {
+                        transaction.CategoryId = transfersCategory.Id;
+                        transaction.Category = "Transfers";
+                    }
+                }
+
                 await _transactionRepository.AddAsync(transaction);
                 newTransactionsCount++;
             }
 
             await _transactionRepository.SaveChangesAsync();
-            var totalCount = await _transactionRepository.GetCountAsync();
+            var totalCount = await _transactionRepository.GetCountAsync(userId);
 
             return new CsvImportResult
             {
@@ -59,13 +74,14 @@ namespace PersonalFinanceTracker.Services
             };
         }
 
-        public async Task<PagedResponse<Transaction>> GetTransactionsAsync(GetTransactions request)
+        // Rest of the existing methods remain the same...
+        public async Task<PagedResponse<Transaction>> GetTransactionsAsync(GetTransactions request, string userId)
         {
-            // Validate and sanitize request
             request.PageSize = Math.Min(request.PageSize, 100);
             request.Page = Math.Max(request.Page, 1);
 
             var result = await _transactionRepository.GetPagedAsync(
+                userId: userId,
                 page: request.Page,
                 pageSize: request.PageSize,
                 search: request.Search,
@@ -77,9 +93,9 @@ namespace PersonalFinanceTracker.Services
             return result;
         }
 
-        public async Task<TransactionSummary> GetTransactionSummaryAsync(bool excludeInternalTransfers = false)
+        public async Task<TransactionSummary> GetTransactionSummaryAsync(string userId, bool excludeInternalTransfers = false)
         {
-            var allTransactions = await _transactionRepository.GetAllAsync();
+            var allTransactions = await _transactionRepository.GetAllAsync(userId);
             
             if (!allTransactions.Any())
             {
@@ -98,19 +114,19 @@ namespace PersonalFinanceTracker.Services
             return CalculateTransactionSummary(allTransactions, filteredTransactions, excludeInternalTransfers);
         }
 
-        public async Task<Transaction?> GetTransactionByIdAsync(int id)
+        public async Task<Transaction?> GetTransactionByIdAsync(int id, string userId)
         {
-            return await _transactionRepository.GetByIdAsync(id);
+            return await _transactionRepository.GetByIdAsync(id, userId);
         }
 
-        public async Task UpdateTransactionCategoryAsync(int transactionId, int categoryId)
+        public async Task UpdateTransactionCategoryAsync(int transactionId, int categoryId, string userId)
         {
-            var transaction = await _transactionRepository.GetByIdAsync(transactionId);
+            var transaction = await _transactionRepository.GetByIdAsync(transactionId, userId);
             if (transaction == null) {
                 throw new ArgumentException("Transaction not found");
             }
 
-            var category = await _categoryRepository.GetByIdAsync(categoryId);
+            var category = await _categoryRepository.GetByIdAsync(categoryId, userId);
             if (category == null) {
                 throw new InvalidOperationException("Category not found");
             }
@@ -123,7 +139,7 @@ namespace PersonalFinanceTracker.Services
 
         private string GenerateTransactionHash(Transaction transaction)
         {
-            var input = $"{transaction.Date:yyyy-MM-dd}|{transaction.Description}|{transaction.Credit}";
+            var input = $"{transaction.Date:yyyy-MM-dd}|{transaction.Description}|{transaction.Credit}|{transaction.UserId}";
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
             return Convert.ToBase64String(hash);
@@ -136,17 +152,12 @@ namespace PersonalFinanceTracker.Services
 
             var internalPatterns = new[]
             {
-                "transfer", "tfr", "internal", "savings", "investment",
-                "credit card payment", "cc payment", "loan payment",
-                "mortgage payment", "between accounts", "account transfer",
-                "online transfer", "mobile transfer", "wire transfer",
-                "deposit to", "withdrawal from", "move money"
+                "internal transfer", 
             };
 
             var internalCategories = new[]
             {
-                "transfers", "internal transfer", "savings", "investments",
-                "loan payments", "credit card payments", "account transfers"
+                "internal transfer",
             };
 
             return internalPatterns.Any(pattern => desc.Contains(pattern)) ||

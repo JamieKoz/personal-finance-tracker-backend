@@ -4,9 +4,8 @@ using PersonalFinanceTracker.DTO;
 
 namespace PersonalFinanceTracker.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    public class CategoryController : ControllerBase
+    public class CategoryController : BaseController
     {
         private readonly ICategoryService _categoryService;
 
@@ -18,17 +17,22 @@ namespace PersonalFinanceTracker.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCategories()
         {
-            var categories = await _categoryService.GetCategoriesAsync();
+            var userId = GetCurrentUserId();
+            var categories = await _categoryService.GetCategoriesAsync(userId);
             return Ok(categories);
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateCategory([FromBody] CreateCategory request)
         {
-            try {
-                var category = await _categoryService.CreateCategoryAsync(request);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                var category = await _categoryService.CreateCategoryAsync(request, userId);
                 return CreatedAtAction(nameof(GetCategories), new { id = category.Id }, category);
-            } catch (ArgumentException ex) {
+            } 
+            catch (ArgumentException ex) 
+            {
                 return BadRequest(ex.Message);
             }
         }
@@ -36,10 +40,14 @@ namespace PersonalFinanceTracker.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] UpdateCategory request)
         {
-            try {
-                var category = await _categoryService.UpdateCategoryAsync(id, request);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                var category = await _categoryService.UpdateCategoryAsync(id, request, userId);
                 return Ok(category);
-            } catch (ArgumentException ex) {
+            } 
+            catch (ArgumentException ex) 
+            {
                 return NotFound(ex.Message);
             }
         }
@@ -49,7 +57,8 @@ namespace PersonalFinanceTracker.Controllers
         {
             try
             {
-                var result = await _categoryService.DeleteCategoryAsync(id);
+                var userId = GetCurrentUserId();
+                var result = await _categoryService.DeleteCategoryAsync(id, userId);
                 return Ok(result);
             }
             catch (ArgumentException ex)
@@ -61,10 +70,14 @@ namespace PersonalFinanceTracker.Controllers
         [HttpPost("categorize")]
         public async Task<IActionResult> CategorizeTransactions([FromBody] Categorize request)
         {
-            try {
-                var result = await _categoryService.CategorizeTransactionsAsync(request);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                var result = await _categoryService.CategorizeTransactionsAsync(request, userId);
                 return Ok(result);
-            } catch (ArgumentException ex) {
+            } 
+            catch (ArgumentException ex) 
+            {
                 return BadRequest(ex.Message);
             }
         }
@@ -72,10 +85,14 @@ namespace PersonalFinanceTracker.Controllers
         [HttpPost("categorize-with-pattern")]
         public async Task<IActionResult> CategorizeWithPattern([FromBody] CategorizeWithPattern request)
         {
-            try {
-                var result = await _categoryService.CategorizeWithPatternAsync(request);
+            try 
+            {
+                var userId = GetCurrentUserId();
+                var result = await _categoryService.CategorizeWithPatternAsync(request, userId);
                 return Ok(result);
-            } catch (ArgumentException ex) {
+            } 
+            catch (ArgumentException ex) 
+            {
                 return BadRequest(ex.Message);
             }
         }

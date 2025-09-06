@@ -15,30 +15,34 @@ namespace PersonalFinanceTracker.Repositories
             _context = context;
         }
 
-        public async Task<Transaction?> GetByIdAsync(int id)
-        {
-            return await _context.Transactions.FindAsync(id);
-        }
-
-        public async Task<Transaction?> GetByHashAsync(string hash)
+        public async Task<Transaction?> GetByIdAsync(int id, string userId)
         {
             return await _context.Transactions
-                .FirstOrDefaultAsync(t => t.ImportHash == hash);
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         }
 
-        public async Task<List<Transaction>> GetAllAsync()
-        {
-            return await _context.Transactions.ToListAsync();
-        }
-
-        public async Task<List<Transaction>> GetByCategoryIdAsync(int categoryId)
+        public async Task<Transaction?> GetByHashAsync(string hash, string userId)
         {
             return await _context.Transactions
-                .Where(t => t.CategoryId == categoryId)
+                .FirstOrDefaultAsync(t => t.ImportHash == hash && t.UserId == userId);
+        }
+
+        public async Task<List<Transaction>> GetAllAsync(string userId)
+        {
+            return await _context.Transactions
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Transaction>> GetByCategoryIdAsync(int categoryId, string userId)
+        {
+            return await _context.Transactions
+                .Where(t => t.CategoryId == categoryId && t.UserId == userId)
                 .ToListAsync();
         }
 
         public async Task<PagedResponse<Transaction>> GetPagedAsync(
+            string userId,
             int page, 
             int pageSize, 
             string? search = null, 
@@ -46,7 +50,9 @@ namespace PersonalFinanceTracker.Repositories
             string sortDirection = "desc", 
             string? category = null)
         {
-            var query = _context.Transactions.AsQueryable();
+            var query = _context.Transactions
+                .Where(t => t.UserId == userId)
+                .AsQueryable();
 
             // Apply category filter
             if (!string.IsNullOrWhiteSpace(category))
@@ -63,7 +69,6 @@ namespace PersonalFinanceTracker.Repositories
                     EF.Functions.Like(t.Category != null ? t.Category.ToLower() : "", $"%{searchTerm}%"));
             }
 
-            // Apply sorting
             query = sortField?.ToLower() switch
             {
                 "date" => sortDirection?.ToLower() == "asc"
@@ -76,11 +81,11 @@ namespace PersonalFinanceTracker.Repositories
                     ? query.OrderBy(t => t.Category)
                     : query.OrderByDescending(t => t.Category),
                 "credit" => sortDirection?.ToLower() == "asc"
-                    ? query.OrderBy(t => t.Credit)
-                    : query.OrderByDescending(t => t.Credit),
+                    ? query.OrderBy(t => (double)t.Credit) // Convert to double for SQLite
+                    : query.OrderByDescending(t => (double)t.Credit),
                 "balance" => sortDirection?.ToLower() == "asc"
-                    ? query.OrderBy(t => t.Balance)
-                    : query.OrderByDescending(t => t.Balance),
+                    ? query.OrderBy(t => (double)t.Balance) // Convert to double for SQLite
+                    : query.OrderByDescending(t => (double)t.Balance),
                 _ => query.OrderByDescending(t => t.Date)
             };
 
@@ -106,13 +111,16 @@ namespace PersonalFinanceTracker.Repositories
         }
 
         public async Task<List<Transaction>> GetTransactionsByFiltersAsync(
+            string userId,
             string? descriptionPattern = null,
             decimal? amountMin = null,
             decimal? amountMax = null,
             DateTime? dateFrom = null,
             DateTime? dateTo = null)
         {
-            var query = _context.Transactions.AsQueryable();
+            var query = _context.Transactions
+                .Where(t => t.UserId == userId)
+                .AsQueryable();
 
             // Apply pattern matching
             if (!string.IsNullOrEmpty(descriptionPattern))
@@ -143,18 +151,20 @@ namespace PersonalFinanceTracker.Repositories
             return await query.ToListAsync();
         }
 
-        public async Task<List<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName)
+        public async Task<List<Transaction>> GetSimilarUncategorizedTransactionsAsync(string businessName, string userId)
         {
             return await _context.Transactions
-                .Where(t => t.Description.Contains(businessName) &&
+                .Where(t => t.UserId == userId &&
+                           t.Description.Contains(businessName) &&
                            (t.CategoryId == null || t.Category == "Uncategorized") &&
                            !t.Description.ToLower().Contains("transfer"))
                 .ToListAsync();
         }
 
-        public async Task<int> GetCountAsync()
+        public async Task<int> GetCountAsync(string userId)
         {
-            return await _context.Transactions.CountAsync();
+            return await _context.Transactions
+                .CountAsync(t => t.UserId == userId);
         }
 
         public async Task AddAsync(Transaction transaction)

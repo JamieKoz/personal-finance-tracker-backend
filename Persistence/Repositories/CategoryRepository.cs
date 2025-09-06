@@ -4,7 +4,6 @@ using PersonalFinanceTracker.DTO;
 
 namespace PersonalFinanceTracker.Persistence
 {
-
     public class CategoryRepository : ICategoryRepository
     {
         private readonly TransactionDbContext _context;
@@ -14,20 +13,22 @@ namespace PersonalFinanceTracker.Persistence
             _context = context;
         }
 
-        public async Task<Category?> GetByIdAsync(int id)
-        {
-            return await _context.Categories.FindAsync(id);
-        }
-
-        public async Task<Category?> GetByNameAsync(string name)
+        public async Task<Category?> GetByIdAsync(int id, string userId)
         {
             return await _context.Categories
-                .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower());
+                .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         }
 
-        public async Task<List<CategoryWithCount>> GetCategoriesWithTransactionCountAsync()
+        public async Task<Category?> GetByNameAsync(string name, string userId)
         {
             return await _context.Categories
+                .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower() && c.UserId == userId);
+        }
+
+        public async Task<List<CategoryWithCount>> GetCategoriesWithTransactionCountAsync(string userId)
+        {
+            return await _context.Categories
+                .Where(c => c.UserId == userId)
                 .Select(c => new CategoryWithCount
                 {
                     Id = c.Id,
@@ -35,7 +36,7 @@ namespace PersonalFinanceTracker.Persistence
                     Description = c.Description,
                     Color = c.Color ?? string.Empty,
                     CreatedAt = c.CreatedAt,
-                    TransactionCount = c.Transactions.Count()
+                    TransactionCount = c.Transactions.Count(t => t.UserId == userId)
                 })
                 .ToListAsync();
         }
