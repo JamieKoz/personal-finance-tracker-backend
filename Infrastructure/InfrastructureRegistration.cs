@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using PersonalFinanceTracker.Models;
 using PersonalFinanceTracker.Persistence;
 using PersonalFinanceTracker.Repositories;
+using PersonalFinanceTracker.Services;
 using System.Text;
 
 namespace PersonalFinanceTracker.Infrastructure
@@ -77,6 +78,8 @@ namespace PersonalFinanceTracker.Infrastructure
             // Repositories
             services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddHttpClient();
+            services.AddScoped<IEmailService, EmailService>();
 
             return services;
         }

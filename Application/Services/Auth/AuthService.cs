@@ -16,15 +16,18 @@ namespace PersonalFinanceTracker.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly TransactionDbContext _context;
+        private readonly IEmailService _emailService;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
-            TransactionDbContext context)
+            TransactionDbContext context,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
+            _emailService = emailService;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -78,6 +81,44 @@ namespace PersonalFinanceTracker.Services
         {
             // Implementation for revoking refresh tokens
             throw new NotImplementedException("Token revocation functionality to be implemented");
+        }
+
+        public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                // Don't reveal that the user doesn't exist
+                return true;
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            
+            // Create reset URL - you'll need to configure this for your frontend
+            var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
+            var resetUrl = $"{frontendUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(token)}";
+
+            // Send email (implement IEmailService)
+            await _emailService.SendPasswordResetEmailAsync(user.Email!, resetUrl);
+
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                throw new ArgumentException("Invalid reset request");
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+
+            return true;
         }
 
         // Remove async since it doesn't use await - fixes warning
