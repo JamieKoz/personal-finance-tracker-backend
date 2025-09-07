@@ -12,10 +12,13 @@ namespace PersonalFinanceTracker.Api
             {
                 options.AddPolicy("AllowReactApp", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000") // Your React app URL
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                    policy.WithOrigins(
+                        "https://personal-finance-tracker-frontend.pages.dev",     // For Cloudflare Pages
+                        "http://localhost:3000"  // For local development
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
                 });
             });
             return services;

@@ -2,7 +2,6 @@ using PersonalFinanceTracker.Persistence;
 using PersonalFinanceTracker.Application;
 using PersonalFinanceTracker.Api;
 using PersonalFinanceTracker.Infrastructure;
-using PersonalFinanceTracker.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,10 +22,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 app.UseCors("AllowReactApp");
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://0.0.0.0:{port}");
 app.Run();
 
