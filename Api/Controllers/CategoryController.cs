@@ -29,6 +29,9 @@ namespace PersonalFinanceTracker.Controllers
             {
                 var userId = GetCurrentUserId();
                 var category = await _categoryService.CreateCategoryAsync(request, userId);
+
+                TriggerBackup();
+
                 return CreatedAtAction(nameof(GetCategories), new { id = category.Id }, category);
             } 
             catch (ArgumentException ex) 
@@ -44,6 +47,9 @@ namespace PersonalFinanceTracker.Controllers
             {
                 var userId = GetCurrentUserId();
                 var category = await _categoryService.UpdateCategoryAsync(id, request, userId);
+
+                TriggerBackup();
+
                 return Ok(category);
             } 
             catch (ArgumentException ex) 
@@ -59,6 +65,9 @@ namespace PersonalFinanceTracker.Controllers
             {
                 var userId = GetCurrentUserId();
                 var result = await _categoryService.DeleteCategoryAsync(id, userId);
+
+                TriggerBackup();
+
                 return Ok(result);
             }
             catch (ArgumentException ex)
@@ -89,6 +98,9 @@ namespace PersonalFinanceTracker.Controllers
             {
                 var userId = GetCurrentUserId();
                 var result = await _categoryService.CategorizeWithPatternAsync(request, userId);
+
+                TriggerBackup();
+
                 return Ok(result);
             } 
             catch (ArgumentException ex) 

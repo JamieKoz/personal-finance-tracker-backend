@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using PersonalFinanceTracker.Persistence;
 
 namespace PersonalFinanceTracker.Controllers
 {
@@ -17,6 +18,22 @@ namespace PersonalFinanceTracker.Controllers
         protected string? GetCurrentUserEmail()
         {
             return User.FindFirst(ClaimTypes.Email)?.Value;
+        }
+
+        protected void TriggerBackup()
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var backupService = HttpContext.RequestServices.GetRequiredService<SqliteBackupService>();
+                    await backupService.BackupDatabase();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Backup failed: {ex.Message}");
+                }
+            });
         }
     }
 }

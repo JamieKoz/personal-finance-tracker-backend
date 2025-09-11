@@ -8,8 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApiServices();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddSingleton<SqliteBackupService>();
 
 var app = builder.Build();
+
+var backupService = app.Services.GetRequiredService<SqliteBackupService>();
+await backupService.RestoreLatestBackup();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -21,12 +25,16 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
 app.UseCors("AllowReactApp");
-// app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-app.Urls.Add($"http://0.0.0.0:{port}");
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    // Running in Cloud Run
+    app.Urls.Add($"http://0.0.0.0:{port}");
+}
 app.Run();
 

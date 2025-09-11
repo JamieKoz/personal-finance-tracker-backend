@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using PersonalFinanceTracker.Models;
 using PersonalFinanceTracker.DTO;
 using PersonalFinanceTracker.Services;
+using PersonalFinanceTracker.Persistence;
 
 namespace PersonalFinanceTracker.Controllers
 {
@@ -86,6 +87,9 @@ namespace PersonalFinanceTracker.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _transactionService.UpdateTransactionCategoryAsync(id, request.CategoryId, userId);
+
+                TriggerBackup();
+
                 return Ok(new { Message = "Transaction category updated successfully" });
             } 
             catch (ArgumentException ex) 
